@@ -2,8 +2,8 @@
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
-    "distDir": "../",
-    "devPath": "../"
+    "distDir": "../ui",
+    "devPath": "../ui"
   },
   "package": {
     "productName": "My PDF Reader",
