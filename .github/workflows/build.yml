@@ -27,7 +27,7 @@ jobs:
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force -Path "src-tauri/icons"
-          $baseUrl = "https://raw.githubusercontent.com/tauri-apps/tauri/refs/heads/tauri-v1/tooling/cli/templates/app/src-tauri/icons"
+          $baseUrl = "https://raw.githubusercontent.com/tauri-apps/tauri/refs/heads/1.x/tooling/cli/templates/app/src-tauri/icons"
           Invoke-WebRequest -Uri "$baseUrl/icon.ico" -OutFile "src-tauri/icons/icon.ico"
           Invoke-WebRequest -Uri "$baseUrl/icon.icns" -OutFile "src-tauri/icons/icon.icns"
           Invoke-WebRequest -Uri "$baseUrl/32x32.png" -OutFile "src-tauri/icons/32x32.png"
