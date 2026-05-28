@@ -1,0 +1,2278 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>My pdf reader</title>
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000000' stroke='%23ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpolyline points='14 2 14 8 20 8'/%3E%3Cpath d='M9.5 12.5l5 5'/%3E%3Cpath d='M14.5 12.5l-5 5'/%3E%3C/svg%3E">
+    
+    <!-- 🚀 100% ઑફલાઇન બાપ લેવલ લોકલ ફાઇલ્સ! -->
+    <link rel="stylesheet" href="./lib/fonts/fonts.css">
+    <link rel="stylesheet" href="./lib/pdf_viewer.min.css">
+    <script src="./lib/pdf.min.js"></script>
+    <script src="./lib/pdf_viewer.min.js"></script>
+    <script src="./lib/pdf-lib.min.js"></script>
+    
+    <style>
+        /* Premium minimal design - Fully Offline */
+
+        :root {
+            --bg-deep: #202124; /* Brave Bookmark Bar Color */         
+            --bg-toolbar: rgba(32, 33, 36, 0.75);       
+            --danger-red: #ff3b30; 
+            --danger-hover: #ff453a;
+            --text-main: #f5f5f7;        
+            --text-muted: #86868b;
+            --glass-border: rgba(255, 59, 48, 0.15);
+        }
+
+        * {
+            box-sizing: border-box; margin: 0; padding: 0;
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+            
+            /* Disable text selection for UI elements, but keep enabled for PDF */
+            -webkit-user-select: none;
+            user-select: none; 
+        }
+
+        body {
+            background-color: var(--bg-deep); color: var(--text-main);
+            overflow: hidden; width: 100vw; height: 100dvh; 
+            display: flex; flex-direction: column;
+            overscroll-behavior: none; touch-action: none; 
+        }
+
+        /* 🖕 સેવેજ હોમ પેજ (Premium Super AMOLED Black) */
+        #upload-container {
+            position: absolute; inset: 0;
+            display: flex; justify-content: center; align-items: center;
+            background: var(--bg-deep);
+            z-index: 100; padding: 20px; transition: opacity 0.4s ease, visibility 0.4s;
+            overflow: hidden;
+        }
+
+        /* Ambient Glowing Blobs - No blur filters for 144 FPS rendering speed! */
+        .bg-blob {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            opacity: 0.16;
+            mix-blend-mode: screen;
+            pointer-events: none;
+            z-index: 1;
+            animation: floatBlob 25s infinite alternate ease-in-out;
+            will-change: transform;
+        }
+        .blob-red {
+            background: radial-gradient(circle, rgba(255, 59, 48, 0.4) 0%, rgba(255, 59, 48, 0.1) 40%, transparent 70%);
+            top: -15%;
+            left: -15%;
+            animation-duration: 25s;
+        }
+        .blob-purple {
+            background: radial-gradient(circle, rgba(147, 51, 234, 0.35) 0%, rgba(147, 51, 234, 0.08) 40%, transparent 70%);
+            bottom: -15%;
+            right: -15%;
+            animation-duration: 30s;
+        }
+        .blob-orange {
+            background: radial-gradient(circle, rgba(249, 115, 22, 0.28) 0%, rgba(249, 115, 22, 0.06) 40%, transparent 70%);
+            top: 35%;
+            left: 45%;
+            animation-duration: 35s;
+        }
+        @keyframes floatBlob {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(60px, -50px) scale(1.08); }
+            100% { transform: translate(-30px, 30px) scale(0.95); }
+        }
+
+        .upload-card {
+            background: rgba(18, 18, 22, 0.5);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            border-radius: 32px; 
+            padding: 50px 40px; text-align: center; width: 100%; max-width: 540px;
+            box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform, box-shadow;
+            animation: cardEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            z-index: 10;
+        }
+
+        .upload-card::before {
+            content: ''; position: absolute; inset: 0; border-radius: 32px;
+            padding: 1px;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        /* Dash border target effect */
+        .upload-card::after {
+            content: '';
+            position: absolute;
+            inset: 12px;
+            border: 2px dashed rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            pointer-events: none;
+            transition: border-color 0.3s ease, background-color 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: scale(1);
+        }
+
+        @keyframes cardEntrance {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        #upload-container.drag-active .upload-card {
+            transform: scale(1.03) translateY(-5px); 
+            box-shadow: 0 40px 80px rgba(255, 59, 48, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 59, 48, 0.4);
+            background: rgba(25, 15, 15, 0.7);
+        }
+
+        #upload-container.drag-active .upload-card::after {
+            border-color: rgba(255, 59, 48, 0.4);
+            background-color: rgba(255, 59, 48, 0.02);
+            transform: scale(1.015);
+        }
+
+        .upload-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 90px; height: 90px; border-radius: 50%;
+            background: linear-gradient(145deg, rgba(255, 59, 48, 0.12), rgba(255, 59, 48, 0.03));
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 20px rgba(255, 59, 48, 0.06);
+            border: 1px solid rgba(255, 59, 48, 0.12);
+            animation: floatIcon 6s infinite ease-in-out;
+        }
+
+        .upload-icon svg {
+            color: var(--danger-red); width: 40px; height: 40px;
+            filter: drop-shadow(0 0 12px rgba(255, 59, 48, 0.4));
+        }
+
+        @keyframes floatIcon {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        .upload-title { 
+            font-size: 40px; font-weight: 900; margin-bottom: 8px; 
+            letter-spacing: -1px; line-height: 1.1; 
+            background: linear-gradient(135deg, #ffffff 40%, #a1a1aa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .upload-title span { 
+            background: linear-gradient(135deg, #ff453a, #ff1a1a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .upload-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            font-weight: 500;
+            letter-spacing: 0.1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--danger-red), #d60000); color: #fff; border: none; 
+            padding: 16px 36px; font-size: 15px; font-weight: 700; letter-spacing: 0.5px;
+            border-radius: 16px; cursor: pointer; 
+            display: inline-flex; align-items: center; gap: 12px;
+            box-shadow: 0 10px 25px rgba(255, 59, 48, 0.25), inset 0 1px 1px rgba(255,255,255,0.2);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); will-change: transform, box-shadow;
+            position: relative; overflow: hidden;
+            z-index: 5;
+        }
+
+        .btn-primary::after {
+            content: ''; position: absolute; top: 0; left: -150%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+            transform: skewX(-20deg);
+            pointer-events: none;
+        }
+
+        .btn-primary:hover { transform: scale(1.04) translateY(-2px); box-shadow: 0 15px 30px rgba(255, 59, 48, 0.4), inset 0 1px 1px rgba(255,255,255,0.3); }
+        .btn-primary:hover::after { left: 150%; transition: left 0.8s ease-in-out; }
+        .btn-primary:active { transform: scale(0.97) translateY(1px); box-shadow: 0 5px 15px rgba(255, 59, 48, 0.3); }
+
+        input[type="file"] { display: none; }
+
+        /* 🎛️ પ્રીમિયમ સુપર એમોલેડ ટૂલબાર */
+        #reader-container { 
+            display: none; flex-direction: column; height: 100%; width: 100%; 
+            position: relative; background: var(--bg-deep); 
+            opacity: 0; transform: scale(0.98);
+            transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        #toolbar {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            margin: 0;
+            width: max-content; max-width: calc(100% - 40px);
+            height: 56px; flex-shrink: 0;
+            background: #121316; /* Solid AMOLED charcoal-black */
+            border: 1.5px solid #2d2e38; border-radius: 16px; /* Modern structured rounded-rectangle */
+            display: flex; flex-direction: row; align-items: center; justify-content: center;
+            padding: 0 18px; z-index: 50; gap: 20px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.02);
+            overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+            box-sizing: border-box;
+        }
+        #toolbar::-webkit-scrollbar { display: none; }
+
+        .toolbar-group { 
+            display: flex; flex-direction: row; align-items: center; gap: 6px; 
+            background: transparent; 
+            width: max-content; height: 38px;
+            border: none; flex-shrink: 0;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* Solid slate dividers */
+        .toolbar-group:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            right: -10px;
+            top: 20%;
+            height: 60%;
+            width: 1.5px;
+            background: #2d2e38;
+        }
+
+        .icon-btn {
+            background: transparent; color: #a1a1aa; border: none;
+            height: 38px; border-radius: 10px; cursor: pointer;
+            display: flex; flex-direction: row; align-items: center; justify-content: center;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 0 12px 0 6px; gap: 6px;
+            box-sizing: border-box;
+        }
+        .icon-btn.no-text { width: 38px; padding: 0; }
+
+        .icon-btn .icon-circle {
+            width: 26px; height: 26px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+            background: transparent !important;
+            color: inherit !important;
+        }
+
+        .icon-btn .tool-label {
+            font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0.1px;
+            transition: all 0.2s;
+        }
+
+        .icon-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.2s; }
+        
+        .icon-btn:hover:not(:disabled) { 
+            background-color: #24252f; 
+            color: #ffffff;
+        }
+        .icon-btn:hover:not(:disabled) svg { transform: scale(1.05); }
+        .icon-btn:active:not(:disabled) { transform: scale(0.96); }
+        
+        /* Solid High-Contrast Active States (No Glass) */
+        .icon-btn.active { 
+            background-color: #ff3b30; 
+            color: #ffffff;
+        }
+        
+        #close-btn {
+            color: #ff3b30;
+        }
+        #close-btn:hover:not(:disabled) {
+            background-color: #ff3b30;
+            color: #ffffff;
+        }
+
+        .icon-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+        .page-indicator { display: flex; flex-direction: row; justify-content: center; align-items: center; padding: 0 4px; gap: 6px; font-variant-numeric: tabular-nums; font-weight: 500; font-size: 14px; color: var(--text-muted); }
+        .page-indicator .divider { color: #3a3a3c; font-weight: 400; font-size: 14px; }
+        #page-count { color: var(--text-muted); font-size: 14px; }
+        
+        #page-num::-webkit-outer-spin-button,
+        #page-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        #page-num {
+            -moz-appearance: textfield;
+            width: 44px; background: #111115; color: var(--text-main);
+            border: 1.5px solid #2d2e38; text-align: center; font-size: 14px; font-weight: 600; border-radius: 8px;
+            outline: none; padding: 4px 0;
+            -webkit-user-select: text; user-select: text;
+            transition: border-color 0.2s ease;
+        }
+        #page-num:focus { border-color: #ffcc00; background: #09090b; }
+        #zoom-val { font-size: 14px; font-weight: 500; width: 48px; text-align: center; color: var(--text-main); letter-spacing: 0px; }
+
+        /* 📄 પીડીએફ વ્યુઅર એરિયા (સ્મૂથનેસ નો બાપ) */
+        #viewer-area {
+            flex-grow: 1; overflow: auto; position: absolute; inset: 0;
+            display: flex; justify-content: center; align-items: flex-start;
+            padding: 100px 24px 24px 24px; 
+            background-color: var(--bg-deep);
+            scroll-behavior: smooth; contain: strict; 
+        }
+
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2d2e38; border-radius: 10px; border: 2px solid var(--bg-deep); }
+        ::-webkit-scrollbar-thumb:hover { background: #3a3b46; }
+
+        #zoom-container {
+            position: relative; transform-origin: center top;
+            transform: translateZ(0); will-change: transform;
+            /* No transition by default to optimize trackpad pinch zoom */
+        }
+
+        #pdf-page-wrapper {
+            position: relative; background-color: #fff; 
+            border-radius: 4px; 
+            box-shadow: 0 0 0 1px #333;
+            overflow: hidden; margin: 0 auto;
+            will-change: width, height, opacity;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        canvas { display: block; width: 100% !important; height: 100% !important; z-index: 1; position: relative; }
+
+        /* 🚨 અસલી ફાયરફોક્સ બાપ લેવલ ટેક્સ્ટ સિલેક્શન સીએસએસ 🚨 */
+        .textLayer {
+            position: absolute;
+            text-align: initial;
+            inset: 0;
+            transform-origin: 0 0;
+            line-height: 1;
+            overflow: hidden;
+            opacity: 1 !important;
+            z-index: 2;
+            mix-blend-mode: multiply;
+        }
+        .textLayer span, .textLayer br {
+            color: transparent;
+            position: absolute;
+            white-space: pre;
+            pointer-events: none;
+            /* removed opacity:0 so selection bg is visible */
+        }
+        .viewer-box-mode, .viewer-box-mode .textLayer, .viewer-box-mode .textLayer * {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+        }
+        .textLayer ::-moz-selection { background: #b4d5ff; color: transparent; }
+        .textLayer ::selection { background: #b4d5ff; color: transparent; }
+        .textLayer, .textLayer * {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+            pointer-events: auto !important;
+        }
+
+        #loading-indicator {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(100px) scale(0.9);
+            background: var(--bg-deep); color: var(--text-main);
+            padding: 12px 24px; border-radius: 28px; font-size: 14px; font-weight: 500;
+            z-index: 999; border: 1px solid #333336;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 59, 48, 0.15);
+            opacity: 0; visibility: hidden; pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #loading-indicator.show {
+            transform: translateX(-50%) translateY(0) scale(1);
+            opacity: 1; visibility: visible;
+        }
+        
+        .spinner {
+            display: inline-block; width: 16px; height: 16px; margin-right: 8px; vertical-align: middle;
+            border: 2px solid rgba(255, 59, 48, 0.3); border-top-color: var(--danger-red);
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 🚨 કસ્ટમ પ્રીમિયમ ટોસ્ટ (Pill UI) */
+        #error-toast {
+            position: fixed; top: 96px; left: 50%; transform: translateX(-50%) translateY(-100px) scale(0.9);
+            background: var(--bg-deep); color: var(--text-main);
+            padding: 12px 24px; border-radius: 28px; font-weight: 500; font-size: 14px;
+            display: flex; align-items: center; gap: 12px; z-index: 9999;
+            border: 1px solid #333336;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 59, 48, 0.15);
+            opacity: 0; visibility: hidden; pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #error-toast.show {
+            transform: translateX(-50%) translateY(0) scale(1);
+            opacity: 1; visibility: visible;
+        }
+        #error-toast svg {
+            color: var(--danger-red);
+            width: 18px; height: 18px;
+            filter: drop-shadow(0 0 10px rgba(255, 59, 48, 0.4));
+        }
+        /* 🖍️ હાઈલાઈટ ઓવરલે CSS */
+        .highlight-overlay {
+            position: absolute; background-color: rgba(255, 204, 0, 0.4);
+            mix-blend-mode: multiply; pointer-events: none; z-index: 10;
+        }
+        
+        /* છુપાવો પીડીએફ.જેએસ ના ડીફોલ્ટ એનોટેશન (Duplicate ના દેખાય એટલે) */
+        .annotationLayer { display: none !important; }
+        
+        .viewer-erase-mode, .viewer-erase-mode * { 
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="rgba(255, 59, 48, 0.15)" stroke="%23ff3b30" stroke-width="2"/></svg>') 24 24, crosshair !important; 
+        }
+        .viewer-erase-mode .textLayer, .viewer-erase-mode .textLayer * {
+            -webkit-user-select: none !important;
+            user-select: none !important;
+        }
+        
+        /* Specific action colors for active states (No Glass Effect) */
+        #btn-toggle-highlight.active {
+            background-color: #ffcc00;
+            color: #0d0e12;
+        }
+        #btn-toggle-pencil.active {
+            background-color: #ff3b30;
+            color: #ffffff;
+        }
+        #btn-toggle-box-highlight.active {
+            background-color: #ff9500;
+            color: #ffffff;
+        }
+        #btn-toggle-erase.active {
+            background-color: #545456;
+            color: #ffffff;
+        }
+        .icon-btn.active svg { transform: scale(1.08); }
+        
+        .pencil-options-panel {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-left: 8px;
+            background: #18181c;
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1.5px solid #2d2e38;
+        }
+
+        /* 🚀 પોપઅપ CSS */
+        .solid-popup {
+            background: #18181c;
+            border: 1.5px solid #2d2e38;
+            border-radius: 12px; padding: 4px;
+            display: flex; gap: 4px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+            animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .popup-btn {
+            background: transparent; color: white; border: none; padding: 8px 12px;
+            border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+            font-family: inherit; font-size: 13px; font-weight: 600; transition: all 0.2s;
+        }
+        .popup-btn:hover { background: #ffcc00; color: #0d0e12; }
+        .popup-btn svg { stroke: currentColor; fill: none; stroke-width: 2; }
+
+        /* 📂 Recent Files CSS */
+        #recent-files-section { margin-top: 36px; text-align: left; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 24px; }
+        .recent-title { font-size: 12px; font-weight: 800; color: var(--text-muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1.5px;}
+        #recent-files-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        
+        .recent-file-item { 
+            background: rgba(255, 255, 255, 0.02); 
+            padding: 12px 16px; 
+            border-radius: 16px;
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            cursor: pointer; 
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+        .recent-file-item:hover { 
+            border-color: rgba(255, 59, 48, 0.25); 
+            background: rgba(255, 59, 48, 0.05); 
+            transform: translateY(-2px); 
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), 0 0 15px rgba(255, 59, 48, 0.05); 
+        }
+        .recent-file-info-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            overflow: hidden;
+            flex-grow: 1;
+        }
+        .recent-file-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid rgba(255, 59, 48, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--danger-red);
+            transition: all 0.3s ease;
+        }
+        .recent-file-item:hover .recent-file-icon {
+            background: var(--danger-red);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(255, 59, 48, 0.3);
+        }
+        .recent-file-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+        .recent-file-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow: hidden;
+            text-align: left;
+        }
+        .recent-file-name { 
+            font-size: 14px; 
+            font-weight: 600; 
+            color: var(--text-main);
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            max-width: 280px; 
+        }
+        .recent-file-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .meta-dot {
+            color: rgba(255, 255, 255, 0.15);
+        }
+        .btn-delete-recent {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 0;
+            flex-shrink: 0;
+        }
+        .recent-file-item:hover .btn-delete-recent {
+            opacity: 1;
+        }
+        .btn-delete-recent:hover {
+            background: rgba(255, 59, 48, 0.15);
+            color: var(--danger-red);
+            transform: scale(1.05);
+        }
+        .btn-delete-recent svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* 📱 મોબાઈલ રિસ્પોન્સિવ ડીઝાઇન */
+        @media (max-width: 600px) {
+            .upload-card { padding: 40px 20px; border-radius: 20px; }
+            .upload-title { font-size: 24px; }
+            .upload-subtitle { font-size: 14px; margin-bottom: 24px; }
+            .btn-primary { padding: 12px 24px; font-size: 15px; }
+            #toolbar { padding: 10px; justify-content: center; }
+            .toolbar-group { padding: 2px; }
+            .icon-btn { width: 36px; height: 36px; }
+            .page-indicator { padding: 0 8px; font-size: 14px; }
+            #page-num { width: 35px; font-size: 14px; }
+            .btn-danger-close { font-size: 12px; padding: 0 12px; gap: 4px; }
+            .btn-danger-close svg { width: 16px; height: 16px; }
+        }
+
+        /* 🚨 Custom Savage Warning Modal CSS */
+        .warning-modal-overlay {
+            position: fixed; inset: 0;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 9999; opacity: 0; pointer-events: none;
+            transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .warning-modal-overlay.show {
+            opacity: 1; pointer-events: auto;
+        }
+        .warning-modal-card {
+            background: #050505;
+            border: 1px solid var(--danger-red);
+            border-radius: 24px;
+            padding: 40px 30px;
+            width: 90%; max-width: 480px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(255, 59, 48, 0.15);
+            transform: scale(0.95);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .warning-modal-overlay.show .warning-modal-card {
+            transform: scale(1);
+        }
+        .warning-modal-icon {
+            color: var(--danger-red);
+            width: 64px; height: 64px; margin: 0 auto 20px;
+            filter: drop-shadow(0 0 15px rgba(255, 59, 48, 0.4));
+        }
+        .warning-modal-icon svg { width: 100%; height: 100%; }
+        .warning-modal-title {
+            font-size: 20px; font-weight: 900; letter-spacing: -0.5px;
+            margin-bottom: 14px; color: var(--text-main);
+        }
+        .warning-modal-text {
+            font-size: 14px; color: var(--text-muted); line-height: 1.6;
+            margin-bottom: 28px;
+        }
+        .warning-modal-actions {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+        }
+        .warning-btn {
+            padding: 14px 16px; border-radius: 12px;
+            font-size: 14px; font-weight: 700; cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            border: none; outline: none; text-align: center;
+        }
+        .warning-btn:hover {
+            transform: translateY(-2px);
+        }
+        .warning-btn:active {
+            transform: translateY(0);
+        }
+        .warning-btn-save {
+            background: var(--danger-red); color: #fff;
+        }
+        .warning-btn-save:hover {
+            background: var(--danger-hover);
+            box-shadow: 0 0 15px rgba(255, 59, 48, 0.4);
+        }
+        .warning-btn-save-as {
+            background: #1c1c1e; color: #fff;
+            border: 1px solid #3a3a3c;
+        }
+        .warning-btn-save-as:hover {
+            background: #2c2c2e;
+        }
+        .warning-btn-discard {
+            background: #1a0b0b; color: #ff453a;
+            border: 1px solid rgba(255, 69, 58, 0.15);
+            grid-column: span 2;
+        }
+        .warning-btn-discard:hover {
+            background: #2d1212;
+            box-shadow: 0 0 15px rgba(255, 69, 58, 0.1);
+        }
+        .warning-btn-cancel {
+            background: transparent; color: var(--text-muted);
+            grid-column: span 2; font-size: 12px; font-weight: 500;
+            padding: 8px 16px; margin-top: 4px;
+        }
+        .warning-btn-cancel:hover {
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="upload-container">
+        <!-- Ambient Glowing Blobs -->
+        <div class="bg-blob blob-red"></div>
+        <div class="bg-blob blob-purple"></div>
+        <div class="bg-blob blob-orange"></div>
+
+        <div class="upload-card" id="drop-zone">
+            <div class="upload-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="12" y1="18" x2="12" y2="12"></line>
+                    <polyline points="9 15 12 12 15 15"></polyline>
+                </svg>
+            </div>
+            <h2 class="upload-title"><span>My PDF</span> Reader</h2>
+            <p class="upload-subtitle">Drag your messy PDF here or click below to browse</p>
+            <button class="btn-primary" id="custom-browse-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                Pick a fucking file, dipshit
+            </button>
+            <input type="file" id="file-upload" accept="application/pdf">
+            
+            <div id="recent-files-section" style="display: none;">
+                <div class="recent-title">Your recent shit</div>
+                <ul id="recent-files-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎛️ લોહીલુહાણ રીડર વર્કસ્પેસ 🎛️ -->
+    <div id="reader-container">
+        <div id="toolbar">
+            <div class="toolbar-group">
+                <button id="btn-prev" class="icon-btn no-text" title="Go back, you blind fuck">
+                    <div class="icon-circle"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></div>
+                </button>
+                <div class="page-indicator">
+                    <input type="number" id="page-num" value="1" min="1">
+                    <span class="divider">/</span>
+                    <span id="page-count">0</span>
+                </div>
+                <button id="btn-next" class="icon-btn no-text" title="Next page, you absolute retard">
+                    <div class="icon-circle"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+                </button>
+            </div>
+
+            <div class="toolbar-group">
+                <button id="btn-zoom-out" class="icon-btn no-text" title="Shrink this miserable shit">
+                    <div class="icon-circle"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+                </button>
+                <span id="zoom-val" style="font-size: 11px; font-weight: 700; color: #888;">100%</span>
+                <button id="btn-zoom-in" class="icon-btn no-text" title="Enhance, motherfucker">
+                    <div class="icon-circle"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+                </button>
+            </div>
+
+            <div class="toolbar-group">
+                <button id="btn-toggle-highlight" class="icon-btn" title="Highlight Mode (Smear this shit)">
+                    <div class="icon-circle"><svg viewBox="0 0 24 24"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg></div>
+                    <span class="tool-label">Text</span>
+                </button>
+                <button id="btn-toggle-pencil" class="icon-btn" title="Pencil Tool (Scribble like a toddler)">
+                    <div class="icon-circle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                            <path d="M2 2l7.586 7.586"></path>
+                            <circle cx="11" cy="11" r="2"></circle>
+                        </svg>
+                    </div>
+                    <span class="tool-label">Pen</span>
+                </button>
+                <div id="pencil-options" class="pencil-options-panel">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="6"></circle></svg>
+                    <input type="range" id="pencil-size-slider" min="2" max="30" value="12" style="width: 60px; accent-color: #ff3b30;">
+                </div>
+                <button id="btn-toggle-box-highlight" class="icon-btn" title="Area Highlight (Box out this scanned crap)">
+                    <div class="icon-circle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <path d="M9 3v18"></path>
+                        </svg>
+                    </div>
+                    <span class="tool-label">Area</span>
+                </button>
+                <button id="btn-toggle-erase" class="icon-btn no-text" title="Erase Mode (Wipe your miserable mistakes)">
+                    <div class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L20 9C20.5 9.5 20.5 10.5 20 11L11 20H20V20Z"></path></svg></div>
+                </button>
+                <button id="btn-undo-highlight" class="icon-btn no-text" title="Undo (Fix your royal fuck-up)">
+                    <div class="icon-circle"><svg viewBox="0 0 24 24"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></div>
+                </button>
+                <button id="btn-save-pdf" class="icon-btn no-text" title="Force Save this garbage (Ctrl+S)">
+                    <div class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg></div>
+                </button>
+                <button id="btn-save-as-pdf" class="icon-btn no-text" title="Save As (Another piece of shit)...">
+                    <div class="icon-circle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                            <g transform="translate(8, 8) scale(0.65)" stroke-width="3">
+                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" fill="var(--bg-deep)"></path>
+                            </g>
+                        </svg>
+                    </div>
+                </button>
+            </div>
+
+            <div class="toolbar-group">
+                <button id="close-btn" class="icon-btn no-text" title="Get the fuck out">
+                    <div class="icon-circle"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+                </button>
+            </div>
+        </div>
+
+        <!-- 🚀 સિક્રેટ હાઈલાઈટ પોપઅપ -->
+        <div id="selection-popup" class="solid-popup" style="display: none; position: absolute; z-index: 1000;">
+            <button id="popup-btn-highlight" class="popup-btn" title="Highlight it, you lazy cunt">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>
+                Highlight
+            </button>
+        </div>
+
+        <div id="viewer-area">
+            <div id="zoom-container">
+                <div id="pdf-page-wrapper">
+                    <canvas id="pdf-canvas"></canvas>
+                    <svg id="ink-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4;"></svg>
+                    <div id="text-layer" class="textLayer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-indicator"><span class="spinner"></span> Loading this absolute bullshit...</div>
+
+    <!-- 🚨 કસ્ટમ એરર ટોસ્ટ -->
+    <div id="error-toast">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span id="error-toast-msg">Error Message</span>
+    </div>
+
+    <!-- 🚨 Custom Savage Warning Modal for Unsaved Changes -->
+    <div id="unsaved-warning-modal" class="warning-modal-overlay">
+        <div class="warning-modal-card">
+            <div class="warning-modal-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+            </div>
+            <h3 class="warning-modal-title">HOLD ON, YOU ABSOLUTE DUMBASS!</h3>
+            <p class="warning-modal-text">You highlighted and edited this miserable PDF using your single active brain cell, and now you're trying to close it without saving? Save your shit, save it as new shit, or discard and get the fuck out of here!</p>
+            <div class="warning-modal-actions">
+                <button id="warning-btn-save" class="warning-btn warning-btn-save">Save</button>
+                <button id="warning-btn-save-as" class="warning-btn warning-btn-save-as">Save As</button>
+                <button id="warning-btn-discard" class="warning-btn warning-btn-discard">Discard & Leave</button>
+                <button id="warning-btn-cancel" class="warning-btn warning-btn-cancel">Go Back</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cache DOM elements
+        const DOM = {
+            uploadContainer: document.getElementById('upload-container'),
+            readerContainer: document.getElementById('reader-container'),
+            fileInput: document.getElementById('file-upload'),
+            customBrowseBtn: document.getElementById('custom-browse-btn'),
+            loadingIndicator: document.getElementById('loading-indicator'),
+            zoomContainer: document.getElementById('zoom-container'),
+            wrapper: document.getElementById('pdf-page-wrapper'),
+            canvas: document.getElementById('pdf-canvas'),
+            ctx: document.getElementById('pdf-canvas').getContext('2d', { alpha: false, desynchronized: true }), 
+            textLayer: document.getElementById('text-layer'),
+            viewerArea: document.getElementById('viewer-area'),
+            btnPrev: document.getElementById('btn-prev'),
+            btnNext: document.getElementById('btn-next'),
+            btnZoomIn: document.getElementById('btn-zoom-in'),   
+            btnZoomOut: document.getElementById('btn-zoom-out'), 
+            inputPageNum: document.getElementById('page-num'),
+            spanPageCount: document.getElementById('page-count'),
+            btnClose: document.getElementById('close-btn'),
+            zoomVal: document.getElementById('zoom-val'),
+            btnTogglePencil: document.getElementById('btn-toggle-pencil'),
+            pencilOptions: document.getElementById('pencil-options'),
+            pencilSizeSlider: document.getElementById('pencil-size-slider'),
+            inkLayer: document.getElementById('ink-layer'),
+            btnToggleHighlight: document.getElementById('btn-toggle-highlight'),
+            btnToggleBoxHighlight: document.getElementById('btn-toggle-box-highlight'),
+            btnToggleErase: document.getElementById('btn-toggle-erase'),
+            btnUndoHighlight: document.getElementById('btn-undo-highlight'),
+            btnSavePdf: document.getElementById('btn-save-pdf'),
+            btnSaveAsPdf: document.getElementById('btn-save-as-pdf'),
+            recentSection: document.getElementById('recent-files-section'),
+            recentList: document.getElementById('recent-files-list'),
+            selectionPopup: document.getElementById('selection-popup'),
+            btnPopupHighlight: document.getElementById('popup-btn-highlight'),
+            warningModal: document.getElementById('unsaved-warning-modal'),
+            warningBtnSave: document.getElementById('warning-btn-save'),
+            warningBtnSaveAs: document.getElementById('warning-btn-save-as'),
+            warningBtnDiscard: document.getElementById('warning-btn-discard'),
+            warningBtnCancel: document.getElementById('warning-btn-cancel')
+        };
+
+        // PDF.js State Management 
+        let State = {
+            pdfDoc: null, pageNum: 1, pageRendering: false, pageNumPending: null,
+            scale: 1.2, targetScale: 1.2, visualScale: 1.0, objectUrl: null, renderTask: null,
+            highlights: {}, inkPaths: {}, isHighlightMode: false, isBoxHighlightMode: false, isEraseMode: false, isPencilMode: false, pencilSize: 12, highlightHistory: [], 
+            originalPdfBytes: null, originalFileName: "", fileHandle: null, fileKey: "", parsedPages: {},
+            hasChanges: false
+        };
+
+        // 🚨 કસ્ટમ ટોસ્ટ ફંક્શન
+        function showErrorToast(msg) {
+            const toast = document.getElementById('error-toast');
+            const toastMsg = document.getElementById('error-toast-msg');
+            toastMsg.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // 🚨 વર્કર સેટઅપ (100% ઑફલાઇન લોકલ)
+        window.addEventListener('DOMContentLoaded', () => {
+            if(typeof pdfjsLib !== 'undefined') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = './lib/pdf.worker.min.js';
+            } else {
+                showErrorToast("PDF.js લોડ નથી થયું! ફાઈલ પાથ ચેક કર, આંધળા.");
+            }
+            initDB().then(renderRecentFiles);
+        });
+
+        // 📂 IndexedDB Setup for Recent Files
+        const DB_NAME = 'PDFReaderDB'; const DB_VERSION = 1; const STORE_NAME = 'recentFiles';
+        let db;
+        
+        function initDB() {
+            return new Promise((resolve) => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const database = e.target.result;
+                    if (!database.objectStoreNames.contains(STORE_NAME)) database.createObjectStore(STORE_NAME, { keyPath: 'name' });
+                };
+                req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+                req.onerror = () => resolve(null);
+            });
+        }
+        
+        function saveRecentFileToDB(handle, name, dataBlob, size) {
+            if (!db || !name || !dataBlob) return;
+            const tx = db.transaction([STORE_NAME], 'readwrite');
+            tx.objectStore(STORE_NAME).put({ name: name, handle: handle, fileData: dataBlob, lastOpened: Date.now(), size: size });
+            renderRecentFiles();
+        }
+        
+        function formatBytes(bytes) {
+            if (!bytes) return "0 B";
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function deleteRecentFile(name) {
+            if (!db) return;
+            const tx = db.transaction([STORE_NAME], 'readwrite');
+            tx.objectStore(STORE_NAME).delete(name);
+            tx.oncomplete = () => {
+                showErrorToast("Removed from history! 🗑️");
+                renderRecentFiles();
+            };
+        }
+
+        function renderRecentFiles() {
+            if (!db) return;
+            const tx = db.transaction([STORE_NAME], 'readwrite');
+            const req = tx.objectStore(STORE_NAME).getAll();
+            req.onsuccess = () => {
+                const allFiles = req.result.sort((a,b) => b.lastOpened - a.lastOpened);
+                const filesToKeep = allFiles.slice(0, 4);
+                const filesToDelete = allFiles.slice(4);
+                
+                // Storage Cleaner: Delete older files so we don't waste disk space
+                filesToDelete.forEach(f => {
+                    tx.objectStore(STORE_NAME).delete(f.name);
+                });
+
+                if (filesToKeep.length === 0) {
+                    DOM.recentSection.style.display = 'none'; return;
+                }
+                DOM.recentSection.style.display = 'block';
+                DOM.recentList.innerHTML = '';
+                filesToKeep.forEach(f => {
+                    const li = document.createElement('li');
+                    li.className = 'recent-file-item';
+                    const dateStr = new Date(f.lastOpened).toLocaleDateString('gu-IN');
+                    const sizeStr = formatBytes(f.size);
+                    li.innerHTML = `
+                        <div class="recent-file-info-group">
+                            <div class="recent-file-icon">
+                                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            </div>
+                            <div class="recent-file-details">
+                                <div class="recent-file-name" title="${f.name}">${f.name}</div>
+                                <div class="recent-file-meta">
+                                    <span class="recent-file-size">${sizeStr}</span>
+                                    <span class="meta-dot">•</span>
+                                    <span class="recent-file-date">${dateStr}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn-delete-recent" title="Remove from list">
+                            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    `;
+                    
+                    li.onclick = (e) => {
+                        if (e.target.closest('.btn-delete-recent')) {
+                            e.stopPropagation();
+                            deleteRecentFile(f.name);
+                        } else {
+                            openRecentFile(f.name);
+                        }
+                    };
+                    DOM.recentList.appendChild(li);
+                });
+            };
+        }
+        
+        async function openRecentFile(name) {
+            if (!db) return;
+            const tx = db.transaction([STORE_NAME], 'readonly');
+            const req = tx.objectStore(STORE_NAME).get(name);
+            req.onsuccess = async () => {
+                const record = req.result;
+                if (!record) return;
+                try {
+                    // No permission prompt required! We stored the actual file data.
+                    let file = null;
+                    if (record.fileData) {
+                        file = new File([record.fileData], record.name, { type: 'application/pdf' });
+                    }
+                    if (record.handle) State.fileHandle = record.handle;
+                    else State.fileHandle = null;
+
+                    if (file) {
+                        loadPDF(file);
+                    } else {
+                        throw new Error("No file data in DB");
+                    }
+                } catch(e) {
+                    showErrorToast("File's dead, you blind fuck! (Or old DB format)");
+                    const txDelete = db.transaction([STORE_NAME], 'readwrite');
+                    txDelete.objectStore(STORE_NAME).delete(name);
+                    renderRecentFiles();
+                }
+            };
+        }
+
+        // 🗂️ ફાઈલ હેન્ડલિંગ લવડા (Modern File System API)
+        DOM.customBrowseBtn.addEventListener('click', async () => {
+            try {
+                if (window.showOpenFilePicker) {
+                    const [handle] = await window.showOpenFilePicker({
+                        types: [{ description: 'PDF Files', accept: { 'application/pdf': ['.pdf'] } }],
+                        multiple: false
+                    });
+                    State.fileHandle = handle;
+                    const file = await handle.getFile();
+                    loadPDF(file);
+                } else {
+                    DOM.fileInput.click();
+                }
+            } catch (err) { console.log(err); }
+        });
+
+        DOM.uploadContainer.addEventListener('dragover', (e) => { e.preventDefault(); DOM.uploadContainer.classList.add('drag-active'); }, {passive: false});
+        DOM.uploadContainer.addEventListener('dragleave', () => DOM.uploadContainer.classList.remove('drag-active'), {passive: true});
+        DOM.uploadContainer.addEventListener('drop', async (e) => {
+            e.preventDefault(); DOM.uploadContainer.classList.remove('drag-active');
+            const item = e.dataTransfer.items ? e.dataTransfer.items[0] : null;
+            
+            if (item && item.kind === 'file' && item.getAsFileSystemHandle) {
+                try {
+                    const handle = await item.getAsFileSystemHandle();
+                    State.fileHandle = handle;
+                    const file = await handle.getFile();
+                    if (file?.type === "application/pdf") loadPDF(file);
+                    else showErrorToast("ગાંડુ, પીડીએફ આપ, તારી કુંડળી નહિ!");
+                    return;
+                } catch(err) { console.log(err); }
+            }
+            
+            const file = e.dataTransfer.files[0];
+            if (file?.type === "application/pdf") {
+                State.fileHandle = null; // No handle from standard drop
+                loadPDF(file);
+            } else showErrorToast("ગાંડુ, પીડીએફ આપ, તારી કુંડળી નહિ!");
+        }, {passive: false});
+        
+        DOM.fileInput.addEventListener('change', (e) => { 
+            State.fileHandle = null; 
+            if (e.target.files.length) loadPDF(e.target.files[0]); 
+        });
+
+        async function loadPDF(file) {
+            State.originalFileName = file.name || "document.pdf";
+            State.fileKey = "pdf_page_" + State.originalFileName + "_" + file.size;
+            State.originalPdfBytes = await file.arrayBuffer();
+
+            // 🚀 બૅકગ્રાઉન્ડ માં પીડીએફ પાર્સ કરી લો જેથી સેવ કરવામાં ટાઈમ ના લાગે!
+            State.pdfLibDoc = null;
+            window.PDFLib.PDFDocument.load(State.originalPdfBytes).then(doc => {
+                State.pdfLibDoc = doc;
+            }).catch(e => console.error("Background PDF Load Error", e));
+
+            // તાજેતરની ફાઈલ સેવ કરો (હવે ડાયરેક્ટ File/Blob સ્ટોર થશે)
+            saveRecentFileToDB(State.fileHandle, file.name, file, file.size);
+
+            if (State.objectUrl) URL.revokeObjectURL(State.objectUrl);
+            State.objectUrl = URL.createObjectURL(file);
+            
+            DOM.wrapper.style.opacity = '0'; // Hide the white canvas box before loading
+            DOM.uploadContainer.style.opacity = '0';
+            DOM.loadingIndicator.style.display = ''; // Reset
+            DOM.loadingIndicator.classList.add('show');
+            
+            // Force layout immediately so pdf.js doesn't hang when trying to render text layer!
+            DOM.uploadContainer.style.display = 'none'; 
+            DOM.readerContainer.style.display = 'flex'; 
+
+            setTimeout(() => {
+                requestAnimationFrame(() => {
+                    DOM.readerContainer.style.opacity = '1';
+                    DOM.readerContainer.style.transform = 'scale(1)';
+                });
+            }, 400);
+
+            try {
+                const loadingTask = pdfjsLib.getDocument({url: State.objectUrl});
+                State.pdfDoc = await loadingTask.promise;
+                DOM.spanPageCount.textContent = State.pdfDoc.numPages;
+                DOM.inputPageNum.max = State.pdfDoc.numPages;
+                
+                let savedData = localStorage.getItem(State.fileKey);
+                try {
+                    let parsed = JSON.parse(savedData);
+                    State.pageNum = parsed.pageNum || 1;
+                    State.scale = parsed.scale || 1.2;
+                } catch(e) {
+                    State.pageNum = savedData ? parseInt(savedData) : 1;
+                    if(isNaN(State.pageNum)) State.pageNum = 1;
+                    State.scale = 1.2;
+                }
+
+                if (State.pageNum > State.pdfDoc.numPages) State.pageNum = State.pdfDoc.numPages;
+                if (State.pageNum < 1) State.pageNum = 1;
+                
+                State.targetScale = State.scale;
+                updateZoomText(); queueRenderPage(State.pageNum);
+            } catch (error) {
+                showErrorToast("Your PDF is totally fucked! Error: " + error.message);
+                closeViewer();
+            }
+        }
+
+        // 🖼️ અસલી એપલ સ્મૂથ રેન્ડરિંગ (ઝૂમ અને ટેક્સ્ટ લેયર ના ફિક્સ સાથે)
+        async function renderPage(num) {
+            State.pageRendering = true;
+
+            if (State.renderTask) { State.renderTask.cancel(); }
+
+            try {
+                const page = await State.pdfDoc.getPage(num);
+                const viewport = page.getViewport({ scale: State.scale });
+                const outputScale = window.devicePixelRatio || 1; 
+
+                DOM.canvas.width = Math.floor(viewport.width * outputScale);
+                DOM.canvas.height = Math.floor(viewport.height * outputScale);
+                // ઝૂમ કર્યા પછી જે પેજ નો ભાગ (center) જોતા હતા એ જ ભાગ જળવાઈ રહે એના માટે Perfect BoundingRect મેથ્સ (બાપ લેવલ ફિક્સ!)
+                const viewerRect = DOM.viewerArea.getBoundingClientRect();
+                const screenCenterX = viewerRect.left + (viewerRect.width / 2);
+                const screenCenterY = viewerRect.top + (viewerRect.height / 2);
+                const zoomRectBefore = DOM.zoomContainer.getBoundingClientRect();
+                
+                let percentX = 0, percentY = 0;
+                if (zoomRectBefore.width > 0 && zoomRectBefore.height > 0) {
+                    percentX = (screenCenterX - zoomRectBefore.left) / zoomRectBefore.width;
+                    percentY = (screenCenterY - zoomRectBefore.top) / zoomRectBefore.height;
+                }
+
+                // Firefox ની જેમ exact fractional pixel વાપરો જેથી TextLayer પરફેક્ટ સેટ થાય!
+                DOM.wrapper.style.width = `${viewport.width}px`;
+                DOM.wrapper.style.height = `${viewport.height}px`;
+                DOM.textLayer.style.setProperty('--scale-factor', viewport.scale);
+
+                // Remove CSS scale upon render completion WITHOUT transition (Fixes the chunky zoom flash!)
+                DOM.zoomContainer.style.transition = 'none';
+                DOM.zoomContainer.style.transform = `scale(1)`; 
+                State.visualScale = 1.0;
+                void DOM.zoomContainer.offsetHeight; // Force reflow
+                DOM.zoomContainer.style.transition = '';
+
+                // Restore exact visual center
+                if (zoomRectBefore.width > 0 && zoomRectBefore.height > 0) {
+                    const zoomRectAfter = DOM.zoomContainer.getBoundingClientRect();
+                    const currentPointX = zoomRectAfter.left + (zoomRectAfter.width * percentX);
+                    const currentPointY = zoomRectAfter.top + (zoomRectAfter.height * percentY);
+                    
+                    DOM.viewerArea.scrollLeft += (currentPointX - screenCenterX);
+                    DOM.viewerArea.scrollTop += (currentPointY - screenCenterY);
+                }
+
+                const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null;
+
+                DOM.ctx.clearRect(0, 0, DOM.canvas.width, DOM.canvas.height);
+                DOM.textLayer.innerHTML = '';
+
+                State.renderTask = page.render({ canvasContext: DOM.ctx, transform: transform, viewport: viewport, annotationMode: 0 });
+                await State.renderTask.promise;
+
+                // 🚀 SPEED OPTIMIZATION: Reveal page IMMEDIATELY after canvas render!
+                State.pageRendering = false;
+                DOM.loadingIndicator.classList.remove('show');
+                DOM.loadingIndicator.style.display = ''; // Clear inline block from save
+                DOM.wrapper.style.opacity = '1'; // Smoothly reveal the page once rendered
+                
+                DOM.inputPageNum.value = num;
+                DOM.btnPrev.disabled = num <= 1;
+                DOM.btnNext.disabled = num >= State.pdfDoc.numPages;
+
+                if (State.pageNumPending !== null) {
+                    renderPage(State.pageNumPending);
+                    State.pageNumPending = null;
+                    return; // Skip slow text layer for this obsolete page!
+                }
+
+                // 🚨 Run Text Layer and Annotations asynchronously so it doesn't block UI!
+                (async () => {
+                    try {
+                        const textContent = await page.getTextContent();
+                        if (State.pageNum !== num) return; // User already changed page!
+                        
+                        await pdfjsLib.renderTextLayer({
+                            textContentSource: textContent,
+                            container: DOM.textLayer,
+                            viewport: viewport,
+                            textDivs: []
+                        }).promise;
+
+                        if (!State.parsedPages[num]) {
+                            State.parsedPages[num] = true;
+                            const annots = await page.getAnnotations();
+                            if (State.pageNum !== num) return; 
+                            
+                            const highlightAnnots = annots.filter(a => a.subtype === 'Highlight' || a.subtype === 'Square');
+                            if (highlightAnnots.length > 0) {
+                                if (!State.highlights[num]) State.highlights[num] = [];
+                                const unscaledViewport = page.getViewport({ scale: 1 });
+                                const pdfW = unscaledViewport.width;
+                                const pdfH = unscaledViewport.height;
+
+                                highlightAnnots.forEach(h => {
+                                    if (h.rect) {
+                                        const wPct = ((h.rect[2] - h.rect[0]) / pdfW) * 100;
+                                        const hPct = ((h.rect[3] - h.rect[1]) / pdfH) * 100;
+                                        const lPct = (h.rect[0] / pdfW) * 100;
+                                        const tPct = ((pdfH - h.rect[3]) / pdfH) * 100;
+                                        State.highlights[num].push([{ leftPct: lPct, topPct: tPct, widthPct: wPct, heightPct: hPct }]);
+                                    }
+                                });
+                            }
+                        }
+
+                        if (State.pageNum === num) {
+                            renderHighlights(num);
+                            renderInk(num);
+                        }
+                        page.cleanup();
+                    } catch(err) {
+                        if (err.name !== 'RenderingCancelledException') console.error("Async render error:", err);
+                    }
+                })();
+
+            } catch (err) {
+                if (err.name !== 'RenderingCancelledException') console.error("Render shat itself:", err);
+                State.pageRendering = false;
+                DOM.loadingIndicator.classList.remove('show');
+                DOM.loadingIndicator.style.display = '';
+            }
+        }
+
+        // 💾 પેજ મેમરી સેવ કરો (ટેબ સીધી ક્લોઝ કરે તો પણ સેવ થાય એના માટે)
+        function savePageMemory() {
+            if (State.fileKey) {
+                const data = { pageNum: State.pageNum, scale: State.scale };
+                localStorage.setItem(State.fileKey, JSON.stringify(data));
+            }
+        }
+        window.addEventListener('beforeunload', (e) => {
+            savePageMemory();
+            if (State.hasChanges) {
+                const msg = "HOLD ON, YOU ABSOLUTE DUMBASS! You highlighted and edited this miserable PDF using your single active brain cell, and now you're trying to close it without saving?";
+                e.preventDefault();
+                e.returnValue = msg;
+                return msg;
+            }
+        });
+        window.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') savePageMemory();
+        });
+
+        function queueRenderPage(num) {
+            if (State.pageRendering) State.pageNumPending = num;
+            else renderPage(num);
+            savePageMemory(); // પેજ બદલાય એટલે તરત સેવ કરી લો!
+        }
+
+        // 🔄 પેજ નેવિગેશન
+        const goPrev = () => { if (State.pageNum > 1) { State.pageNum--; DOM.viewerArea.scrollTop = 0; queueRenderPage(State.pageNum); } };
+        const goNext = () => { if (State.pageNum < State.pdfDoc.numPages) { State.pageNum++; DOM.viewerArea.scrollTop = 0; queueRenderPage(State.pageNum); } };
+        
+        DOM.btnPrev.addEventListener('click', goPrev);
+        DOM.btnNext.addEventListener('click', goNext);
+        DOM.inputPageNum.addEventListener('change', (e) => {
+            let val = parseInt(e.target.value);
+            if (val >= 1 && val <= State.pdfDoc.numPages) { State.pageNum = val; DOM.viewerArea.scrollTop = 0; queueRenderPage(val); } 
+            else e.target.value = State.pageNum;
+        });
+
+        // 🖍️ ટેક્સ્ટ હાઈલાઈટ મોડ 
+        DOM.btnToggleHighlight.addEventListener('click', () => {
+            State.isHighlightMode = !State.isHighlightMode;
+            if (State.isHighlightMode) {
+                State.isEraseMode = false; State.isBoxHighlightMode = false; State.isPencilMode = false;
+                DOM.btnToggleErase.classList.remove('active');
+                DOM.btnToggleBoxHighlight.classList.remove('active');
+                DOM.btnTogglePencil.classList.remove('active');
+                DOM.pencilOptions.style.display = 'none';
+                DOM.viewerArea.classList.remove('viewer-erase-mode');
+                DOM.viewerArea.classList.remove('viewer-box-mode');
+                DOM.textLayer.style.cursor = '';
+                DOM.btnToggleHighlight.classList.add('active');
+            } else {
+                DOM.btnToggleHighlight.classList.remove('active');
+            }
+        });
+
+        // 🔲 બોક્સ (એરિયા) હાઈલાઈટ મોડ
+        DOM.btnToggleBoxHighlight.addEventListener('click', () => {
+            State.isBoxHighlightMode = !State.isBoxHighlightMode;
+            if (State.isBoxHighlightMode) {
+                State.isHighlightMode = false; State.isEraseMode = false; State.isPencilMode = false;
+                DOM.btnToggleHighlight.classList.remove('active');
+                DOM.btnToggleErase.classList.remove('active');
+                DOM.btnTogglePencil.classList.remove('active');
+                DOM.pencilOptions.style.display = 'none';
+                DOM.viewerArea.classList.remove('viewer-erase-mode');
+                DOM.btnToggleBoxHighlight.classList.add('active');
+                DOM.viewerArea.classList.add('viewer-box-mode');
+                DOM.textLayer.style.cursor = 'crosshair';
+            } else {
+                DOM.btnToggleBoxHighlight.classList.remove('active');
+                DOM.viewerArea.classList.remove('viewer-box-mode');
+                DOM.textLayer.style.cursor = '';
+            }
+        });
+
+        // 🧽 ઇરેઝર મોડ
+        DOM.btnToggleErase.addEventListener('click', () => {
+            State.isEraseMode = !State.isEraseMode;
+            if (State.isEraseMode) {
+                State.isHighlightMode = false; State.isBoxHighlightMode = false; State.isPencilMode = false;
+                DOM.btnToggleHighlight.classList.remove('active');
+                DOM.btnToggleBoxHighlight.classList.remove('active');
+                DOM.btnTogglePencil.classList.remove('active');
+                DOM.pencilOptions.style.display = 'none';
+                DOM.viewerArea.classList.remove('viewer-box-mode');
+                DOM.textLayer.style.cursor = '';
+                DOM.btnToggleErase.classList.add('active');
+                DOM.viewerArea.classList.add('viewer-erase-mode');
+            } else {
+                DOM.btnToggleErase.classList.remove('active');
+                DOM.viewerArea.classList.remove('viewer-erase-mode');
+            }
+        });
+
+        // ✏️ પેન્સિલ ટૂલ મોડ
+        DOM.btnTogglePencil.addEventListener('click', () => {
+            State.isPencilMode = !State.isPencilMode;
+            if (State.isPencilMode) {
+                State.isHighlightMode = false; State.isBoxHighlightMode = false; State.isEraseMode = false;
+                DOM.btnToggleHighlight.classList.remove('active');
+                DOM.btnToggleBoxHighlight.classList.remove('active');
+                DOM.btnToggleErase.classList.remove('active');
+                DOM.viewerArea.classList.remove('viewer-erase-mode');
+                DOM.viewerArea.classList.remove('viewer-box-mode');
+                DOM.btnTogglePencil.classList.add('active');
+                DOM.pencilOptions.style.display = 'flex';
+                DOM.viewerArea.classList.add('viewer-pencil-mode');
+                DOM.textLayer.style.cursor = 'crosshair';
+            } else {
+                DOM.btnTogglePencil.classList.remove('active');
+                DOM.pencilOptions.style.display = 'none';
+                DOM.viewerArea.classList.remove('viewer-pencil-mode');
+                DOM.textLayer.style.cursor = '';
+            }
+        });
+
+        DOM.pencilSizeSlider.addEventListener('input', (e) => {
+            State.pencilSize = parseInt(e.target.value);
+        });
+
+        // અન્ડૂ (Undo) ફીચર
+        DOM.btnUndoHighlight.addEventListener('click', () => {
+            if (State.highlightHistory.length === 0) return;
+            const lastItem = State.highlightHistory.pop();
+            if (typeof lastItem === 'object') {
+                const pageNum = lastItem.page;
+                if (lastItem.type === 'ink' && State.inkPaths[pageNum]) {
+                    State.inkPaths[pageNum].pop();
+                    if (pageNum === State.pageNum) renderInk(pageNum);
+                }
+            } else {
+                const pageNum = lastItem;
+                if (State.highlights[pageNum]) State.highlights[pageNum].pop();
+                if (pageNum === State.pageNum) renderHighlights(pageNum);
+            }
+            State.hasChanges = true;
+        });
+
+        function applyHighlightToSelection(selection) {
+            let node = selection.anchorNode;
+            let isInsideTextLayer = false;
+            while (node) {
+                if (node.id === 'text-layer') { isInsideTextLayer = true; break; }
+                node = node.parentNode;
+            }
+
+            if (isInsideTextLayer) {
+                const rawRects = selection.getRangeAt(0).getClientRects();
+                const textLayerRect = DOM.textLayer.getBoundingClientRect();
+                
+                if (!State.highlights[State.pageNum]) State.highlights[State.pageNum] = [];
+                
+                let rects = [];
+                for (let i = 0; i < rawRects.length; i++) {
+                    const rect = rawRects[i];
+                    rects.push({
+                        leftPct: ((rect.left - textLayerRect.left) / textLayerRect.width) * 100,
+                        topPct: ((rect.top - textLayerRect.top) / textLayerRect.height) * 100,
+                        widthPct: (rect.width / textLayerRect.width) * 100,
+                        heightPct: (rect.height / textLayerRect.height) * 100
+                    });
+                }
+
+                // 🧠 Smart Merging & Edge-style Shrinking
+                rects.sort((a, b) => {
+                    if (Math.abs(a.topPct - b.topPct) > 1.0) return a.topPct - b.topPct;
+                    return a.leftPct - b.leftPct;
+                });
+
+                const highlightGroup = [];
+                for (let i = 0; i < rects.length; i++) {
+                    const r = rects[i];
+                    if (highlightGroup.length === 0) {
+                        highlightGroup.push(r);
+                        continue;
+                    }
+                    const prev = highlightGroup[highlightGroup.length - 1];
+                    // જો એક જ લાઈનમાં હોય (Top ડિફરન્સ 1.5% થી ઓછો)
+                    if (Math.abs(prev.topPct - r.topPct) < 1.5) {
+                        const prevRight = prev.leftPct + prev.widthPct;
+                        // જો બે શબ્દો વચ્ચેની જગ્યા બહુ ઓછી હોય (5% થી ઓછી)
+                        if (r.leftPct - prevRight < 5.0) {
+                            // Merge horizontally
+                            const newRight = Math.max(prevRight, r.leftPct + r.widthPct);
+                            prev.widthPct = newRight - prev.leftPct;
+                            
+                            // Average the vertical dimensions to keep it smooth and tight
+                            prev.topPct = (prev.topPct + r.topPct) / 2;
+                            prev.heightPct = (prev.heightPct + r.heightPct) / 2;
+                            continue; // મર્જ થઈ ગયું!
+                        }
+                    }
+                    highlightGroup.push(r);
+                }
+                
+                // Edge વાપરે છે એવું જ 100% એક્યુરેટ હાઈલાઈટ
+                // અમે કોઈ shrink નથી કરતા જેથી એ બિલકુલ native selection જેવું જ દેખાય
+                
+                State.highlights[State.pageNum].push(highlightGroup);
+                State.highlightHistory.push(State.pageNum);
+                State.hasChanges = true;
+                
+                // ડબલ-ક્લિક સિલેક્શન બગ ફિક્સ: તરત સિલેક્શન ક્લીયર નથી કરતા, જેથી બ્રાઉઝર ગોથું ના ખાય
+                renderHighlights(State.pageNum);
+            }
+        }
+
+        // 🖱️ માઉસ અથવા કીબોર્ડ થી ટેક્સ્ટ સિલેક્ટ થાય ત્યારે ચાલવાવાળું લોજીક
+        function handleTextSelection(e) {
+            if (DOM.readerContainer.style.display === 'none') return;
+            
+            // જો આપણે popup ઉપર જ click કરતા હોઈએ તો કાંઈ નહિ કરવાનું
+            if (e && e.target && e.target.closest && e.target.closest('#selection-popup')) return;
+
+            const selection = window.getSelection();
+            if (selection.rangeCount === 0 || selection.isCollapsed) {
+                DOM.selectionPopup.style.display = 'none';
+                return;
+            }
+
+            // કીબોર્ડ થી સિલેક્ટ કરતી વખતે ઓટો-હાઈલાઈટ ના કરો, નહિ તો ડુપ્લીકેટ બનશે
+            if (State.isHighlightMode && e && e.type === 'mouseup') {
+                // સીધું હાઈલાઈટ કરી દો (જુની સ્ટાઈલ)
+                applyHighlightToSelection(selection);
+                DOM.selectionPopup.style.display = 'none';
+            } else if (!State.isEraseMode) {
+                // પોપઅપ બતાવો
+                const range = selection.getRangeAt(0);
+                const rect = range.getBoundingClientRect();
+                
+                DOM.selectionPopup.style.display = 'flex';
+                // પોપઅપ ને સિલેક્શન ની બરોબર ઉપર વચ્ચે સેટ કરો
+                const popupWidth = DOM.selectionPopup.offsetWidth || 100;
+                const left = rect.left + window.scrollX + (rect.width / 2) - (popupWidth / 2);
+                const top = rect.top + window.scrollY - 45; // 45px ઉપર
+                
+                DOM.selectionPopup.style.left = `${Math.max(10, left)}px`;
+                DOM.selectionPopup.style.top = `${Math.max(10, top)}px`;
+            }
+        }
+
+        document.addEventListener('mouseup', handleTextSelection);
+        
+        // શિફ્ટ + એરો કી (Shift + Arrows) થી સિલેક્ટ કરે તો પણ પોપઅપ બતાવો
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift' || e.key.startsWith('Arrow')) {
+                handleTextSelection(e);
+            }
+        });
+
+        // ક્યાય બીજે ક્લિક કરે તો પોપઅપ બંધ કરી દો
+        document.addEventListener('mousedown', (e) => {
+            if (!e.target.closest('#selection-popup') && DOM.selectionPopup.style.display !== 'none') {
+                DOM.selectionPopup.style.display = 'none';
+            }
+        });
+
+        // પોપઅપ બટન ક્લિક
+        DOM.btnPopupHighlight.addEventListener('click', () => {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0 && !selection.isCollapsed) {
+                applyHighlightToSelection(selection);
+            }
+            DOM.selectionPopup.style.display = 'none';
+        });
+
+        function renderHighlights(pageNum) {
+            const existing = DOM.textLayer.querySelectorAll('.highlight-overlay');
+            existing.forEach(el => el.remove());
+            
+            const pageHighlights = State.highlights[pageNum] || [];
+            pageHighlights.forEach((group, index) => {
+                group.forEach(hl => {
+                    const div = document.createElement('div');
+                    div.className = 'highlight-overlay';
+                    div.style.left = `${hl.leftPct}%`;
+                    div.style.top = `${hl.topPct}%`;
+                    div.style.width = `${hl.widthPct}%`;
+                    div.style.height = `${hl.heightPct}%`;
+                    div.dataset.groupIndex = index;
+                    
+                    DOM.textLayer.appendChild(div);
+                });
+            });
+        }
+
+        function renderInk(pageNum) {
+            DOM.inkLayer.innerHTML = '';
+            const paths = State.inkPaths[pageNum] || [];
+            const rect = DOM.textLayer.getBoundingClientRect();
+            if (rect.width === 0) return; // Not ready
+
+            paths.forEach((inkPath, index) => {
+                if (inkPath.points.length === 0) return;
+                const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                pathEl.setAttribute("stroke", inkPath.color);
+                pathEl.setAttribute("stroke-width", inkPath.thickness);
+                pathEl.setAttribute("fill", "none");
+                pathEl.setAttribute("stroke-linecap", "round");
+                pathEl.setAttribute("stroke-linejoin", "round");
+                pathEl.setAttribute("stroke-opacity", "0.4");
+                pathEl.style.mixBlendMode = "multiply";
+                pathEl.dataset.index = index;
+
+                let d = `M ${(inkPath.points[0].x / 100) * rect.width} ${(inkPath.points[0].y / 100) * rect.height}`;
+                for (let i = 1; i < inkPath.points.length; i++) {
+                    d += ` L ${(inkPath.points[i].x / 100) * rect.width} ${(inkPath.points[i].y / 100) * rect.height}`;
+                }
+                pathEl.setAttribute("d", d);
+                DOM.inkLayer.appendChild(pathEl);
+            });
+        }
+
+        // 🧽 અસલી ઈરેઝર બ્રશ (Hover Brush Collision Detection)
+        function performEraser(e) {
+            if (!State.isEraseMode) return;
+            
+            const rect = DOM.textLayer.getBoundingClientRect();
+            const cx = e.clientX - rect.left;
+            const cy = e.clientY - rect.top;
+            const R = 22; // ઇરેઝર બ્રશ ની સાઇઝ
+            
+            const textW = rect.width;
+            const textH = rect.height;
+            
+            const pageHighlights = State.highlights[State.pageNum];
+            const inkPaths = State.inkPaths[State.pageNum];
+            if ((!pageHighlights || pageHighlights.length === 0) && (!inkPaths || inkPaths.length === 0)) return;
+            
+            let erasedAnyHighlight = false;
+            let erasedAnyInk = false;
+            
+            // ઊંધેથી લૂપ ફેરવો જેથી કાઢતી વખતે index ના લોચા ના પડે
+            if (pageHighlights) {
+                for (let i = pageHighlights.length - 1; i >= 0; i--) {
+                    const group = pageHighlights[i];
+                    let groupIntersects = false;
+                    
+                    for (const hl of group) {
+                        const rx = (hl.leftPct / 100) * textW;
+                        const ry = (hl.topPct / 100) * textH;
+                        const rw = (hl.widthPct / 100) * textW;
+                        const rh = (hl.heightPct / 100) * textH;
+                        
+                        // 🔴 Circle અને Rectangle ના ટકરાવ (Collision) નું ગણિત 
+                        const closestX = Math.max(rx, Math.min(cx, rx + rw));
+                        const closestY = Math.max(ry, Math.min(cy, ry + rh));
+                        const distanceX = cx - closestX;
+                        const distanceY = cy - closestY;
+                        
+                        if ((distanceX * distanceX + distanceY * distanceY) < (R * R)) {
+                            groupIntersects = true;
+                            break; // જો કોઈ એક હાઈલાઈટ ટચ થાય તો આખું ગ્રુપ ભૂંસી નાખવાનું
+                        }
+                    }
+                    
+                    if (groupIntersects) {
+                        pageHighlights.splice(i, 1);
+                        erasedAnyHighlight = true;
+                    }
+                }
+            }
+
+            if (inkPaths) {
+                for (let i = inkPaths.length - 1; i >= 0; i--) {
+                    const path = inkPaths[i];
+                    let pathIntersects = false;
+                    const points = path.points;
+                    const rSq = (R + path.thickness/2) * (R + path.thickness/2);
+
+                    for (let j = 0; j < points.length - 1; j++) {
+                        const ax = (points[j].x / 100) * textW;
+                        const ay = (points[j].y / 100) * textH;
+                        const bx = (points[j+1].x / 100) * textW;
+                        const by = (points[j+1].y / 100) * textH;
+
+                        // Point to line segment distance squared
+                        let l2 = (bx - ax) * (bx - ax) + (by - ay) * (by - ay);
+                        let distSq;
+                        if (l2 === 0) {
+                            distSq = (cx - ax) * (cx - ax) + (cy - ay) * (cy - ay);
+                        } else {
+                            let t = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / l2;
+                            t = Math.max(0, Math.min(1, t));
+                            let px = ax + t * (bx - ax);
+                            let py = ay + t * (by - ay);
+                            distSq = (cx - px) * (cx - px) + (cy - py) * (cy - py);
+                        }
+
+                        if (distSq < rSq) {
+                            pathIntersects = true;
+                            break;
+                        }
+                    }
+
+                    if (pathIntersects) {
+                        inkPaths.splice(i, 1);
+                        erasedAnyInk = true;
+                    }
+                }
+            }
+            
+            if (erasedAnyHighlight) {
+                renderHighlights(State.pageNum);
+                State.hasChanges = true;
+            }
+            if (erasedAnyInk) {
+                renderInk(State.pageNum);
+                State.hasChanges = true;
+            }
+        }
+
+        // 🔲 બોક્સ ડ્રોઈંગ અને ઇરેઝર ના માઉસ ઇવેન્ટ્સ
+        let isDrawingBox = false;
+        let boxStartX = 0, boxStartY = 0;
+        let tempBox = null;
+
+        let isDrawingPencil = false;
+        let currentInkPath = null;
+        let tempPathElement = null;
+
+        DOM.textLayer.addEventListener('mousedown', (e) => {
+            if (State.isEraseMode) {
+                performEraser(e);
+            } else if (State.isBoxHighlightMode && e.button === 0) {
+                isDrawingBox = true;
+                const rect = DOM.textLayer.getBoundingClientRect();
+                boxStartX = e.clientX - rect.left;
+                boxStartY = e.clientY - rect.top;
+                
+                tempBox = document.createElement('div');
+                tempBox.className = 'highlight-overlay';
+                tempBox.style.left = `${(boxStartX / rect.width) * 100}%`;
+                tempBox.style.top = `${(boxStartY / rect.height) * 100}%`;
+                tempBox.style.width = '0%';
+                tempBox.style.height = '0%';
+                tempBox.style.pointerEvents = 'none'; 
+                DOM.textLayer.appendChild(tempBox);
+            } else if (State.isPencilMode && e.button === 0) {
+                isDrawingPencil = true;
+                const rect = DOM.textLayer.getBoundingClientRect();
+                const startX = ((e.clientX - rect.left) / rect.width) * 100;
+                const startY = ((e.clientY - rect.top) / rect.height) * 100;
+                
+                currentInkPath = {
+                    color: '#ffd500', // Default yellow
+                    thickness: State.pencilSize,
+                    points: [{x: startX, y: startY}]
+                };
+
+                tempPathElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                tempPathElement.setAttribute("stroke", currentInkPath.color);
+                tempPathElement.setAttribute("stroke-width", currentInkPath.thickness);
+                tempPathElement.setAttribute("fill", "none");
+                tempPathElement.setAttribute("stroke-linecap", "round");
+                tempPathElement.setAttribute("stroke-linejoin", "round");
+                tempPathElement.setAttribute("stroke-opacity", "0.4");
+                tempPathElement.style.mixBlendMode = "multiply";
+                tempPathElement.setAttribute("d", `M ${(startX/100)*rect.width} ${(startY/100)*rect.height}`);
+                DOM.inkLayer.appendChild(tempPathElement);
+            }
+        });
+
+        let pointsBuffer = [];
+        let pendingBox = null;
+        let rafId = null;
+
+        window.addEventListener('mousemove', (e) => {
+            if (State.isEraseMode && e.buttons === 1) {
+                performEraser(e);
+            } else if (isDrawingBox && tempBox) {
+                const rect = DOM.textLayer.getBoundingClientRect();
+                let currentX = e.clientX - rect.left;
+                let currentY = e.clientY - rect.top;
+                
+                currentX = Math.max(0, Math.min(currentX, rect.width));
+                currentY = Math.max(0, Math.min(currentY, rect.height));
+
+                pendingBox = { x: currentX, y: currentY, w: rect.width, h: rect.height };
+
+                if (!rafId) {
+                    rafId = requestAnimationFrame(() => {
+                        if (isDrawingBox && tempBox && pendingBox) {
+                            const left = Math.min(boxStartX, pendingBox.x);
+                            const top = Math.min(boxStartY, pendingBox.y);
+                            const width = Math.abs(pendingBox.x - boxStartX);
+                            const height = Math.abs(pendingBox.y - boxStartY);
+                            
+                            tempBox.style.left = `${(left / pendingBox.w) * 100}%`;
+                            tempBox.style.top = `${(top / pendingBox.h) * 100}%`;
+                            tempBox.style.width = `${(width / pendingBox.w) * 100}%`;
+                            tempBox.style.height = `${(height / pendingBox.h) * 100}%`;
+                        }
+                        rafId = null;
+                    });
+                }
+            } else if (isDrawingPencil && tempPathElement && currentInkPath) {
+                const rect = DOM.textLayer.getBoundingClientRect();
+                let currentX = e.clientX - rect.left;
+                let currentY = e.clientY - rect.top;
+                
+                currentX = Math.max(0, Math.min(currentX, rect.width));
+                currentY = Math.max(0, Math.min(currentY, rect.height));
+
+                currentInkPath.points.push({
+                    x: (currentX / rect.width) * 100,
+                    y: (currentY / rect.height) * 100
+                });
+
+                pointsBuffer.push({x: currentX, y: currentY});
+
+                if (!rafId) {
+                    rafId = requestAnimationFrame(() => {
+                        if (isDrawingPencil && tempPathElement && pointsBuffer.length > 0) {
+                            let currentD = tempPathElement.getAttribute("d") || "";
+                            for (let pt of pointsBuffer) {
+                                currentD += ` L ${pt.x} ${pt.y}`;
+                            }
+                            tempPathElement.setAttribute("d", currentD);
+                            pointsBuffer = [];
+                        }
+                        rafId = null;
+                    });
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+            pointsBuffer = [];
+            pendingBox = null;
+
+            if (isDrawingBox && tempBox) {
+                isDrawingBox = false;
+                const rect = DOM.textLayer.getBoundingClientRect();
+                let endX = e.clientX - rect.left;
+                let endY = e.clientY - rect.top;
+                
+                endX = Math.max(0, Math.min(endX, rect.width));
+                endY = Math.max(0, Math.min(endY, rect.height));
+
+                const left = Math.min(boxStartX, endX);
+                const top = Math.min(boxStartY, endY);
+                const width = Math.abs(endX - boxStartX);
+                const height = Math.abs(endY - boxStartY);
+                
+                tempBox.remove();
+                tempBox = null;
+
+                if (width > 5 && height > 5) {
+                    if (!State.highlights[State.pageNum]) State.highlights[State.pageNum] = [];
+                    State.highlights[State.pageNum].push([{
+                        leftPct: (left / rect.width) * 100,
+                        topPct: (top / rect.height) * 100,
+                        widthPct: (width / rect.width) * 100,
+                        heightPct: (height / rect.height) * 100
+                    }]);
+                    State.highlightHistory.push(State.pageNum);
+                    renderHighlights(State.pageNum);
+                    State.hasChanges = true;
+                }
+            } else if (isDrawingPencil) {
+                isDrawingPencil = false;
+                if (currentInkPath && currentInkPath.points.length > 1) {
+                    if (!State.inkPaths[State.pageNum]) State.inkPaths[State.pageNum] = [];
+                    State.inkPaths[State.pageNum].push(currentInkPath);
+                    State.highlightHistory.push({ type: 'ink', page: State.pageNum });
+                    State.hasChanges = true;
+                    renderInk(State.pageNum);
+                }
+                if (tempPathElement) {
+                    tempPathElement.remove();
+                    tempPathElement = null;
+                }
+                currentInkPath = null;
+            }
+        });
+
+        // 💾 PDF સેવ કરવાની પ્રક્રિયા (બાપ લેવલ ઓપ્ટિમાઈઝેશન + Annotation Architecture)
+        async function generatePDFBytes() {
+            // UI ને અપડેટ થવાનો ટાઈમ આપો (Loading Spinner બતાવવા માટે)
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            // જો બેકગ્રાઉન્ડ માં પહેલેથી જ લોડ થઈ ગયું હોય તો તે જ વાપરો (Instant Save!)
+            let pdfDoc = State.pdfLibDoc;
+            if (!pdfDoc) {
+                pdfDoc = await window.PDFLib.PDFDocument.load(State.originalPdfBytes);
+                State.pdfLibDoc = pdfDoc; // ભવિષ્ય ના સેવ માટે સાચવી રાખો
+            }
+            
+            const pages = pdfDoc.getPages();
+            
+            for (let i = 0; i < pages.length; i++) {
+                const pageNum = i + 1;
+                const page = pages[i];
+                
+                // 1. જૂના હાઈલાઈટ્સ ડીલીટ મારો 
+                let annotsArray = page.node.Annots();
+                if (annotsArray) {
+                    const filtered = [];
+                    for (let j = 0; j < annotsArray.size(); j++) {
+                        const annotRef = annotsArray.get(j);
+                        const annotDict = pdfDoc.context.lookup(annotRef);
+                        if (annotDict instanceof window.PDFLib.PDFDict) {
+                            const subtype = annotDict.lookup(window.PDFLib.PDFName.of('Subtype'));
+                            if (subtype === window.PDFLib.PDFName.of('Highlight') || subtype === window.PDFLib.PDFName.of('Square') || subtype === window.PDFLib.PDFName.of('Ink')) {
+                                continue; // Skip (Delete)
+                            }
+                        }
+                        filtered.push(annotRef);
+                    }
+                    const newAnnots = window.PDFLib.PDFArray.withContext(pdfDoc.context);
+                    filtered.forEach(ref => newAnnots.push(ref));
+                    page.node.set(window.PDFLib.PDFName.of('Annots'), newAnnots);
+                } else {
+                    page.node.set(window.PDFLib.PDFName.of('Annots'), window.PDFLib.PDFArray.withContext(pdfDoc.context));
+                }
+
+                // 2. નવા હાઈલાઈટ્સ એડ કરો
+                const pageHighlights = State.highlights[pageNum];
+                if (!pageHighlights || pageHighlights.length === 0) continue;
+
+                const { width, height } = page.getSize();
+                
+                pageHighlights.forEach(group => {
+                    group.forEach(hl => {
+                        const rectWidth = (hl.widthPct / 100) * width;
+                        const rectHeight = (hl.heightPct / 100) * height;
+                        const llx = (hl.leftPct / 100) * width;
+                        const ury = height - ((hl.topPct / 100) * height);
+                        const lly = ury - rectHeight;
+                        const urx = llx + rectWidth;
+
+                        // Create Official PDF Highlight Annotation
+                        const highlightAnnot = pdfDoc.context.obj({
+                            Type: 'Annot',
+                            Subtype: 'Highlight',
+                            Rect: [llx, lly, urx, ury],
+                            QuadPoints: [llx, ury, urx, ury, llx, lly, urx, lly],
+                            C: [1, 0.8, 0], // RGB Yellow
+                            F: 4 // Print Flag
+                        });
+                        
+                        const annotRef = pdfDoc.context.register(highlightAnnot);
+                        page.node.Annots().push(annotRef);
+                    });
+                });
+
+                // 3. નવા Ink (પેન્સિલ) એડ કરો
+                const inkPaths = State.inkPaths[pageNum];
+                if (inkPaths && inkPaths.length > 0) {
+                    inkPaths.forEach(path => {
+                        let llx = Infinity, lly = Infinity, urx = -Infinity, ury = -Infinity;
+                        const currentStroke = [];
+                        
+                        path.points.forEach(pt => {
+                            const x = (pt.x / 100) * width;
+                            const y = height - ((pt.y / 100) * height);
+                            currentStroke.push(x, y);
+                            
+                            if (x < llx) llx = x;
+                            if (x > urx) urx = x;
+                            if (y < lly) lly = y;
+                            if (y > ury) ury = y;
+                        });
+                        
+                        // Add padding to Rect for thickness
+                        const pad = path.thickness;
+                        llx -= pad; lly -= pad; urx += pad; ury += pad;
+
+                        const inkAnnot = pdfDoc.context.obj({
+                            Type: 'Annot',
+                            Subtype: 'Ink',
+                            Rect: [llx, lly, urx, ury],
+                            InkList: [currentStroke],
+                            C: [1, 0.835, 0], // Yellow #ffd500 (255, 213, 0)
+                            CA: 0.4, // Opacity for stroke (Highlighter effect)
+                            BM: window.PDFLib.PDFName.of('Multiply'),
+                            BS: { S: 'S', W: path.thickness },
+                            F: 4 // Print Flag
+                        });
+                        
+                        const annotRef = pdfDoc.context.register(inkAnnot);
+                        page.node.Annots().push(annotRef);
+                    });
+                }
+
+            }
+            return await pdfDoc.save();
+        }
+
+        // 💾 સેવ કરો (ડાયરેક્ટ ઓવરરાઈટ)
+        async function handleSave() {
+            if (!State.originalPdfBytes) return false;
+            
+            // જો File Handle ના હોય તો Save As વાળું લોજીક ચલાવો
+            if (!State.fileHandle || !window.showSaveFilePicker) {
+                return await handleSaveAs();
+            }
+
+            DOM.loadingIndicator.innerHTML = '<span class="spinner"></span> સેવ થાય છે રાંડના...';
+            DOM.loadingIndicator.style.display = 'block';
+
+            try {
+                const pdfBytes = await generatePDFBytes();
+                
+                // 🚨 મેમરી અને તાજેતરની ફાઈલ સિસ્ટમ ને નવી સાઈઝ માટે અપડેટ કરો
+                const newFileKey = "pdf_page_" + State.originalFileName + "_" + pdfBytes.byteLength;
+                const data = { pageNum: State.pageNum, scale: State.scale };
+                localStorage.setItem(newFileKey, JSON.stringify(data));
+                State.fileKey = newFileKey;
+                
+                const writable = await State.fileHandle.createWritable();
+                await writable.write(pdfBytes);
+                await writable.close();
+                
+                const blobToSave = new Blob([pdfBytes], { type: 'application/pdf' });
+                saveRecentFileToDB(State.fileHandle, State.originalFileName, blobToSave, pdfBytes.byteLength);
+                
+                // ઓવરરાઈટ કર્યા પછી નવી ફાઈલનો ડેટા મેમરીમાં અપડેટ કરો
+                State.originalPdfBytes = pdfBytes.buffer || pdfBytes;
+                showErrorToast("Saved this massive piece of shit! 🎉");
+                State.hasChanges = false;
+                return true;
+            } catch (err) {
+                console.error(err);
+                if (err.name !== 'AbortError') showErrorToast("Failed to overwrite this garbage, you stupid fuck! " + err.message);
+                return false;
+            } finally {
+                DOM.loadingIndicator.classList.remove('show');
+                DOM.loadingIndicator.innerHTML = '<span class="spinner"></span> Loading this absolute bullshit...';
+            }
+        }
+
+        // 💾 સેવ એઝ (નવી ફાઈલ બનાવો)
+        async function handleSaveAs() {
+            if (!State.originalPdfBytes) return false;
+
+            DOM.loadingIndicator.innerHTML = '<span class="spinner"></span> Saving...';
+            DOM.loadingIndicator.classList.add('show');
+
+            try {
+                const pdfBytes = await generatePDFBytes();
+
+                if (window.showSaveFilePicker) {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: State.originalFileName, // સીધું એજ ફાઈલનું નામ આપો જેથી ઓવરરાઈટ થાય
+                        types: [{ description: 'PDF File', accept: { 'application/pdf': ['.pdf'] } }]
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(pdfBytes);
+                    await writable.close();
+                    
+                    // 🚨 ફાઈલ હેન્ડલ અને નામ અપડેટ કરો જેથી ભવિષ્યમાં ડાયરેક્ટ ઓવરરાઈટ થાય (Save As ના પૂછે વારંવાર!)
+                    State.fileHandle = handle;
+                    State.originalFileName = handle.name;
+                    State.originalPdfBytes = pdfBytes.buffer || pdfBytes; // આગળ ના સેવ માટે લેટેસ્ટ ડેટા રાખો
+
+                    // 🚨 મેમરી અપડેટ (જેથી સીધી આજ પેજથી ખુલે)
+                    const newFileKey = "pdf_page_" + handle.name + "_" + pdfBytes.byteLength;
+                    const data = { pageNum: State.pageNum, scale: State.scale };
+                    localStorage.setItem(newFileKey, JSON.stringify(data));
+                    const blobToSaveAs = new Blob([pdfBytes], { type: 'application/pdf' });
+                    saveRecentFileToDB(handle, handle.name, blobToSaveAs, pdfBytes.byteLength);
+                } else {
+                    // જૂના બ્રાઉઝર માટે ફોલબેક
+                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = State.originalFileName; // અહીથી પણ "highlighted_" કાઢી નાખ્યું
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+                }
+                State.hasChanges = false;
+                return true;
+            } catch (err) {
+                console.error(err);
+                if (err.name !== 'AbortError') showErrorToast("Save failed, you absolute dumbass! " + err.message);
+                return false;
+            } finally {
+                DOM.loadingIndicator.classList.remove('show');
+                DOM.loadingIndicator.innerHTML = '<span class="spinner"></span> Loading this absolute bullshit...';
+            }
+        }
+
+        DOM.btnSavePdf.addEventListener('click', handleSave);
+        DOM.btnSaveAsPdf.addEventListener('click', handleSaveAs);
+
+        // 🔎 ઝૂમ નું હાર્ડકોર લેપટોપ ટચપેડ ઓપ્ટિમાઇઝેશન (ડબલ ઝૂમ ફિક્સડ ભોસડીના)
+        let zoomTimeout;
+        function applyZoom(newZoom) {
+            // લિમિટ સેટ કરી માદરચોદ, જેથી બહુ મોટું કે નાનું ના થઈ જાય (Minimum 100%)
+            newZoom = Math.min(Math.max(newZoom, 1.0), 5.0); 
+            
+            // જો ઝૂમ માં ખાસ્સો ફરક હોય તો જ ગાંડ હલાવવાની
+            if (Math.abs(newZoom - State.targetScale) > 0.01) {
+                State.targetScale = newZoom;
+                State.visualScale = State.targetScale / State.scale;
+                
+                // 🚨 તરત જ સીએસએસ થી ઝૂમ કર રાંડના, જેથી ટચપેડ એકદમ રિસ્પોન્સિવ લાગે
+                requestAnimationFrame(() => {
+                    DOM.zoomContainer.style.transform = `scale(${State.visualScale})`;
+                    updateZoomText();
+                });
+
+                clearTimeout(zoomTimeout);
+                zoomTimeout = setTimeout(() => {
+                    if(State.scale !== State.targetScale) {
+                        State.scale = State.targetScale;
+                        savePageMemory();
+                        queueRenderPage(State.pageNum);
+                    }
+                }, 300); // 300ms debounce (much faster sharp rendering!)
+            }
+        }
+
+        DOM.btnZoomIn.addEventListener('click', () => {
+            DOM.zoomContainer.style.transition = 'transform 0.15s cubic-bezier(0.2, 0, 0, 1)';
+            applyZoom(State.targetScale + 0.25);
+        });
+        DOM.btnZoomOut.addEventListener('click', () => {
+            DOM.zoomContainer.style.transition = 'transform 0.15s cubic-bezier(0.2, 0, 0, 1)';
+            applyZoom(State.targetScale - 0.25);
+        });
+        function updateZoomText() { DOM.zoomVal.textContent = `${Math.round(State.targetScale * 100)}%`; }
+
+        // 🚨 ટચપેડ પિન્ચ-ટુ-ઝૂમ ની ગાંડ ફાડ સ્મૂથનેસ (પરફેક્ટ મેથ્સ વાપરીને) 🚨
+        window.addEventListener('wheel', (e) => {
+            if (DOM.readerContainer.style.display !== 'none' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault(); 
+                DOM.zoomContainer.style.transition = 'none'; // Disable transition for trackpad zoom!
+                let zoomFactor = Math.exp(-e.deltaY * 0.01);
+                applyZoom(State.targetScale * zoomFactor);
+            }
+        }, { passive: false });
+
+        // ⌨️ કીબોર્ડ શોર્ટકટ્સ 
+        window.addEventListener('keydown', (e) => {
+            if (DOM.readerContainer.style.display === 'none' || document.activeElement === DOM.inputPageNum) return;
+            
+            if (!e.shiftKey && (e.key === 'ArrowRight' || e.key === 'PageDown')) { 
+                e.preventDefault(); goNext(); 
+            } else if (!e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'PageUp')) { 
+                e.preventDefault(); goPrev(); 
+            } else if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+                if (e.key.toLowerCase() === 'h') {
+                    e.preventDefault();
+                    // જો પહેલાથી ટેક્સ્ટ સિલેક્ટ કરેલું હોય તો સીધું હાઈલાઈટ મારો (નોટપેડ સ્ટાઈલ)
+                    const selection = window.getSelection();
+                    if (selection.rangeCount > 0 && !selection.isCollapsed && DOM.selectionPopup.style.display !== 'none') {
+                        DOM.btnPopupHighlight.click();
+                    } else {
+                        DOM.btnToggleHighlight.click(); // નહિ તો મોડ ચાલુ/બંધ કરો
+                    }
+                } else if (e.key.toLowerCase() === 'e') {
+                    e.preventDefault();
+                    DOM.btnToggleErase.click();
+                }
+            }
+            
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === '=' || e.key === '+' || e.key === '-') {
+                    e.preventDefault(); 
+                    applyZoom(State.targetScale * (e.key === '-' ? 0.8 : 1.25));
+                } else if (e.key.toLowerCase() === 'z') {
+                    e.preventDefault();
+                    DOM.btnUndoHighlight.click();
+                } else if (e.key.toLowerCase() === 's') {
+                    e.preventDefault();
+                    if (e.shiftKey) DOM.btnSaveAsPdf.click();
+                    else DOM.btnSavePdf.click();
+                }
+            }
+        }, { passive: false });
+
+        // ❌ બંધ કરવાનું લોજીક
+        DOM.btnClose.addEventListener('click', () => {
+            if (State.hasChanges) {
+                showWarningModal();
+            } else {
+                closeViewer();
+            }
+        });
+
+        function showWarningModal() {
+            DOM.warningModal.style.display = 'flex';
+            requestAnimationFrame(() => {
+                DOM.warningModal.classList.add('show');
+            });
+        }
+
+        function hideWarningModal() {
+            DOM.warningModal.classList.remove('show');
+            setTimeout(() => {
+                DOM.warningModal.style.display = 'none';
+            }, 250);
+        }
+
+        DOM.warningBtnSave.addEventListener('click', async () => {
+            const success = await handleSave();
+            if (success) {
+                hideWarningModal();
+                closeViewer();
+            }
+        });
+
+        DOM.warningBtnSaveAs.addEventListener('click', async () => {
+            const success = await handleSaveAs();
+            if (success) {
+                hideWarningModal();
+                closeViewer();
+            }
+        });
+
+        DOM.warningBtnDiscard.addEventListener('click', () => {
+            State.hasChanges = false;
+            hideWarningModal();
+            closeViewer();
+        });
+
+        DOM.warningBtnCancel.addEventListener('click', () => {
+            hideWarningModal();
+        });
+
+        function closeViewer() {
+            if(State.renderTask) State.renderTask.cancel(); 
+            clearTimeout(zoomTimeout);
+            
+            DOM.wrapper.style.opacity = '0'; // Hide wrapper immediately
+            DOM.readerContainer.style.opacity = '0';
+            DOM.readerContainer.style.transform = 'scale(0.98)';
+            
+            setTimeout(() => {
+                DOM.readerContainer.style.display = 'none'; 
+                DOM.uploadContainer.style.display = 'flex';
+                requestAnimationFrame(() => DOM.uploadContainer.style.opacity = '1');
+            }, 500);
+            
+            DOM.fileInput.value = '';
+            DOM.ctx.clearRect(0, 0, DOM.canvas.width, DOM.canvas.height); 
+            DOM.textLayer.innerHTML = ''; 
+            DOM.loadingIndicator.classList.remove('show');
+            DOM.zoomContainer.style.transform = `scale(1)`;
+            
+            if (State.pdfDoc) { State.pdfDoc.destroy(); State.pdfDoc = null; }
+            if (State.objectUrl) { URL.revokeObjectURL(State.objectUrl); State.objectUrl = null; }
+            
+            State.pageNum = 1; State.scale = 1.2; State.targetScale = 1.2;
+            State.highlights = {}; State.highlightHistory = [];
+            State.originalPdfBytes = null; State.originalFileName = "";
+            State.fileHandle = null; State.fileKey = ""; State.parsedPages = {};
+            DOM.btnToggleHighlight.classList.remove('active');
+            DOM.btnToggleErase.classList.remove('active');
+            DOM.viewerArea.classList.remove('viewer-erase-mode');
+            State.isHighlightMode = false;
+            State.isEraseMode = false;
+            State.hasChanges = false; // Reset changes state
+        }
+    </script>
+</body>
+</html>
