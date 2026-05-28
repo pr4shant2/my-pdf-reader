@@ -34,6 +34,13 @@ jobs:
           Invoke-WebRequest -Uri "$baseUrl/128x128.png" -OutFile "src-tauri/icons/128x128.png"
           Invoke-WebRequest -Uri "$baseUrl/128x128@2x.png" -OutFile "src-tauri/icons/128x128@2x.png"
 
+      - name: Prepare Frontend Assets
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path "ui"
+          Copy-Item -Path "index.html" -Destination "ui/"
+          Copy-Item -Path "lib" -Destination "ui/" -Recurse
+
       - name: Compile Windows Executable
         working-directory: src-tauri
         run: cargo build --release
