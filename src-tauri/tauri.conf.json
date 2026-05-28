@@ -32,7 +32,7 @@
     "security": {
       "csp": null
     },
-    "window": [
+    "windows": [
       {
         "title": "My PDF Reader",
         "width": 1280,
